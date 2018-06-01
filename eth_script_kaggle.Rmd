@@ -1,0 +1,322 @@
+---
+title: "Statistical Analysis ON Ethereum"
+author: "Arti Mukati"
+date: "April 16, 2018"
+output: html_document
+---
+
+Read Data And loading library
+```{r setup, include=FALSE}
+library(ggplot2)
+setwd("F:/Spring 2018/Adv Stats/final project")
+eth_data = read.csv("ethereum_dataset.csv")
+summary(eth_data)
+eth_data$Days <- 1:nrow(eth_data)
+eth_data$Date <- as.Date(eth_data$Date, format = "%m/%d/%Y")
+names(eth_data)[names(eth_data) == 'eth_etherprice'] <- 'Price'
+library(plotly)
+library(tidyverse)
+library(corrplot)
+```
+
+Cryptocurrency has grown exponentially in value, resulting in it being the frequent topic of conversation and news. Many know that bitcoin is a type of cryptocurrency, but what isn't as known is that there are various types of cryptocurrency like Ethereum which offer slightly different capabilities. For the purpose of this analysis we will focus on solely Ethereum to keep control of the scope.
+Ethereum was created in 2013 by a 19-year-old Russian programmer and launched in 2015. For the first two years its price remained below $10. Then, in 2017, it exploded. In the space of 12 months, one unit of the cryptocurrency - called an ether - surged in value to be worth around $1,400 at its peak in January 2018.
+
+Research Question 
+Since Ethereum is gaining Traction after the Bitcoin collapse and seems to have a future with continuous modification in the technology, I chose to analyze the Prices of the cryptocurrency.
+The main objective of the paper is to look at the prices of Ethereum since the year 2015 and predict the prices of Ethereum. For this Simple linear regression, Multiple regression and Time series analysis is used.
+
+Price ofEtherum overtime
+```{r}
+a =ggplot(eth_data, aes(eth_data$Date, eth_data$Price)) + 
+  geom_line(color="blue", size = 1) +
+  ggtitle('ETH Value vs. Time') +
+  theme(plot.title = element_text(size=20, face="bold", 
+    margin = margin(10, 0, 10, 0)))+
+  labs(x="Date", y="USD")+
+  theme(axis.text.x=element_text(angle=50, vjust=0.5)) +theme_bw() 
+a
+  
+
+```
+
+corellation analysis :
+The correlation plot gives the idea of the correlation between the variables. The variables which are strongly correlated to Market Price are Transactions Per day, Ethereum address, Market cap, Hash Rate, Block size and Gas used. But since these are correlated with each other, so I choose Market CAP for developing a simple linear model.
+
+```{r}
+cor <- cor(eth_data[,c(3:17,19)])
+
+cor
+
+
+```
+
+
+```{r}
+colnames(cor) <- c("MarketPrice","TransactionsPerDay","Address", "Supply", "MarketCap", "HashRate","Difficulty","NBlocks", "Uncles","BlockSize","BlockTime","GasPrice","GasLimit","GasUsed","EtherSupply","Days")
+
+rownames(cor) <-c("MarketPrice","TransactionsPerDay","Address", "Supply", "MarketCap", "HashRate","DifficultyMining","NBlocks", "Uncles","BlockSize","BlockTime","GasPrice","GasLimit","GasUsed","EtherSupply","Days")
+
+corrplot(cor, method = "circle",  tl.srt = 50, tl.col = "black", tl.cex = 0.6, title = "Correlation of Variables", mar=c(0,0,1,0))
+
+```
+
+
+Simple Linear Regression:
+
+Regression analysis can be used to develop an equation showing how dependent and independent variables are related. The variable being predicted is called the dependent variable (eth_ether_price) and the variable used to predict the value of the dependent variable is called the independent variable. The regression analysis helps to determine how much the broader market capitalization impacts the prices of Ethereum.
+
+
+PRICE vs MARKETCAP
+```{r}
+eth_lm1 = lm(Price ~ eth_marketcap, data = eth_data)
+summary(eth_lm1)
+
+ggplot(eth_data, aes(eth_data$eth_marketcap, eth_data$Price)) + 
+  geom_point(color="blue") +
+  ggtitle('Ethereum Market Capitalization vs. Market Price') +
+  theme(plot.title = element_text(size=19.5, face="bold", 
+    margin = margin(10, 0, 10, 0)))+
+  labs(x="Market Cap (USD)", y="Market Price (USD)")+
+  theme(axis.text.x=element_text(angle=50, vjust=0.5)) +theme_bw() +stat_smooth(method = "lm",  formula = y ~ x, col = "grey")
+
+
+```
+
+Residual plot model 1
+```{r}
+std_residuals = rstandard(eth_lm1)
+
+plot(eth_lm1$fitted.values,std_residuals, main="Standardized Residual Plot", ylab = "Standardized Residuals", xlab = "Predicted Price") + grid()
+
+
+```
+ The very high R2 values that you see is because the market price is determined by the market cap and vice versa. Example: The market cap is the number of ethers times the respective price. As the number of ethers at any given point is public knowledge, we can (theoretically) determine the market capitalization directly. This is what you see in the model. 
+ 
+ Now modelling other parameters :
+
+PRICE vs Hashrate
+```{r}
+eth_lm2 = lm(Price ~ eth_hashrate, data = eth_data)
+summary(eth_lm2)
+
+ggplot(eth_data, aes(eth_data$eth_hashrate, eth_data$Price)) + 
+  geom_point(color="blue") +
+  ggtitle('Ethereum Hashrate vs. Market Price') +
+  theme(plot.title = element_text(size=19.5, face="bold", 
+    margin = margin(10, 0, 10, 0)))+
+  labs(x="Hashrate (GH/s", y="Market Price (USD)")+
+  theme(axis.text.x=element_text(angle=50, vjust=0.5)) +theme_bw() +stat_smooth(method = "lm",  formula = y ~ x, col = "grey")
+ 
+```
+
+Considerably good R2 values and the model appears to be significant.
+Residual plot model 2
+```{r}
+std_residuals = rstandard(eth_lm2)
+
+plot(eth_lm2$fitted.values,std_residuals, main="Standardized Residual Plot", ylab = "Standardized Residuals", xlab = "Predicted Price") + grid()
+
+
+```
+
+The residual analysis graph voilates the assumptionsof the error term here The graph is having non constant variance.
+
+Running a simple linear regerssion with other highly corellated varibales but the residual analysis voilates the assumptions of error term.
+
+PRICE VS hash rate
+```{r}
+eth_lm3 = lm(Price ~ eth_blocksize, data = eth_data)
+eth_lm3 = lm(Price ~ poly(eth_blocksize,2), data = eth_data)
+summary(eth_lm3)
+
+ggplot(eth_data, aes(eth_data$eth_blocksize, eth_data$Price)) + 
+  geom_point(color="blue") +
+  ggtitle('Ethereum Blocksize vs. Market Price') +
+  theme(plot.title = element_text(size=19.5, face="bold", 
+    margin = margin(10, 0, 10, 0)))+
+  labs(x="BloxkSize (Bytes)", y="Market Price (USD)")+
+  theme(axis.text.x=element_text(angle=50, vjust=0.5)) +theme_bw() +stat_smooth(method = "lm",  formula = y ~ poly(x,2), col = "grey")
+ 
+```
+
+
+Residual plot model 3
+```{r}
+std_residuals = rstandard(eth_lm3)
+
+plot(eth_lm3$fitted.values,std_residuals, main="Standardized Residual Plot", ylab = "Standardized Residuals", xlab = "Predicted Price") + grid()
+
+
+```
+PRICE VS Gas used using a quadratic model
+
+```{r}
+eth_lm4 = lm(Price ~  eth_gasused, data = eth_data)
+summary(eth_lm4)
+
+ggplot(eth_data, aes(eth_data$eth_gasused, eth_data$Price)) + 
+  geom_point(color="blue") +
+  ggtitle('Ethereum Gas Used vs. Market Price') +
+  theme(plot.title = element_text(size=19.5, face="bold", 
+    margin = margin(10, 0, 10, 0)))+
+  labs(x="GasUSed", y="Market Price (USD)")+
+  theme(axis.text.x=element_text(angle=50, vjust=0.5)) +theme_bw() +stat_smooth(method = "lm",  formula = y ~ x, col = "grey")
+ 
+```
+
+Residual plot model 4
+```{r}
+std_residuals = rstandard(eth_lm4)
+
+plot(eth_lm4$fitted.values,std_residuals, main="Standardized Residual Plot", ylab = "Standardized Residuals", xlab = "Predicted Price") + grid()
+eth_lm5 = lm(Price ~ poly(eth_tx,2), data = eth_data)
+
+```
+
+PRICE VS transaction per day
+
+```{r}
+eth_lm5 = lm(Price ~ eth_tx, data = eth_data)
+
+summary(eth_lm5)
+
+ggplot(eth_data, aes(eth_data$eth_tx, eth_data$Price)) + 
+  geom_point(color="blue") +
+  ggtitle('Ethereum No of Transactions Per day vs. Market Price') +
+  theme(plot.title = element_text(size=19.5, face="bold", 
+    margin = margin(10, 0, 10, 0)))+
+  labs(x="No Transactions (Per day)", y="Market Price (USD)")+
+  theme(axis.text.x=element_text(angle=50, vjust=0.5)) +theme_bw() +stat_smooth(method = "lm",  formula = y ~ x, col = "grey")
+ 
+```
+
+
+Residual plot model 5
+```{r}
+std_residuals = rstandard(eth_lm5)
+
+plot(eth_lm3$fitted.values,std_residuals, main="Standardized Residual Plot", ylab = "Standardized Residuals", xlab = "Predicted Price") + grid()
+
+```
+Multiple regression including all variables 
+```{r}
+eth_lm_all = lm(eth_data$Price ~ eth_hashrate + eth_tx , data = eth_data)
+summary(eth_lm_all)
+
+
+
+```
+
+
+Residual Plot Analysis for multiple regression model
+```{r}
+
+std_residuals = rstandard(eth_lm_all)
+
+plot(eth_lm_all$fitted.values,std_residuals, main="Standardized Residual Plot", ylab = "Standardized Residuals", xlab = "Predicted Price") + grid()
+
+
+
+```
+Variable Selection for Multiple Regression:
+Single-linear regression looks to determine the value of a dependent variable using one independent variable. In multiple regression, multiple independent variables are used to predict the dependent variable. For multiple regression, the F test is used to determine whether a significant relationship exists between the dependent variable and the set of all the independent variables. The F test is referred to as the test of overall significance. A separate t test is conducted for each of the independent variables in the model. Each of these t tests is referred to as a test of individual significance.
+Including all the variables increases the complexity of the equation. Therefore, we need to choose the equation which can explain most of the variance without making it more complex. To decide which variables to include I will be using the Stepwise regression. Although Best subsets regression is best for this process, but because I was not able to run that in my R (It got my system Hanged ) so decided to go with the stepwise regression.
+
+Forward Lm Method 
+
+```{r}
+library(leaps)
+forward_lm = regsubsets(Price ~ ., data = eth_data[,c(3:17, 19:20)], method = "forward", nvmax = length(eth_data[,c(3:20)])-1) # note that nvmax tells the method how many variables we want to consider at most in the model
+(forward_lm_summary = summary(forward_lm))
+forward_lm_summary$adjr2
+
+plot(forward_lm_summary$adjr2,xlab =" Number of Variables ",ylab=" Adjusted RSq",type="l")
+plot(forward_lm, scale='adjr2') 
+```
+
+Back ward lm
+
+```{r}
+backward_lm = regsubsets(Price ~ ., data = eth_data[,c(3:17, 19:20)], method = "backward", nvmax = length(eth_data[,c(3:20)])-1)
+(backward_lm_summary = summary(backward_lm))
+
+# get the adjusted r squared values for each size of the model
+backward_lm_summary$adjr2 # seems like the model with 5 variables is best. 
+plot(backward_lm, scale='adjr2')
+
+```
+
+Step wise regression
+```{r}
+
+stepwise_lm = regsubsets(Price ~ ., data = eth_data[,c(3:17, 19:20)], method = "seqrep", nvmax = length(eth_data[,c(3:20)])-1)
+(stepwise_lm_summary = summary(stepwise_lm))
+
+
+stepwise_lm_summary$adjr2
+plot(stepwise_lm, scale= "adjr2") #
+```
+
+Multiple Regression model for highly correlated variables
+Multiple Regression:
+
+Summary of the multiple regression model using the variables selected using the above Stepwise regression method. The dependent variable being the Market price and the independent variables being hash Rate and the Ethereum addresses. The test for individual significance shows that the model is highly significant as the p-value is very low. The Adjusted R sq. is 1 which shows that the model can explain almost 100% of the variance in the 
+```{r}
+eth_Mlm = lm(Price ~ eth_hashrate + eth_address, data = eth_data)
+summary(eth_Mlm)
+
+
+
+```
+
+
+
+
+F test for Overall Significance:
+Figure 11 shows the F test results, which shows that the model is overall significant. The p-value calculated by the F statistic is very less which makes the model significant.
+
+```{r}
+
+SSTotal <- var( eth_data1$Price ) * (nrow(eth_data1)-1)
+SSE     <- sum( eth_Mlm$resid^2 )
+SSreg   <- SSTotal - SSE
+dfE   <- eth_Mlm$df.residual
+dfReg <- nrow(eth_data1) - 1 - dfE
+MSreg <- SSreg / dfReg
+MSE   <- SSE / dfE
+(Fstat <- MSreg / MSE) # compare this with the summary() result earlier
+(pval  <- pf( Fstat , dfReg, dfE , lower.tail=FALSE )) # compare this with the summary() result earlier
+
+
+
+```
+
+Residual Analysis :
+Again we see the error term assumptions being voilated , non constant variance
+```{r}
+
+std_residuals = rstandard(eth_Mlm)
+resd = eth_Mlm$residuals
+plot(eth_Mlm$fitted.values,std_residuals, main="Standardized Residual Plot", ylab = "Standardized Residuals", xlab = "Predicted Price") + grid()
+
+```
+
+Autocorrelation
+
+When autocorrelation is present, one of the regression assumptions is violated: the error terms are not independent. In this case, serious errors can be made in performing tests of significance based upon the assumed regression model. The Durbin-Watson statistic can be used to detect first-order autocorrelation. First order means that the error term in each period depends on the error term in the previous period.
+Auto correlation often can be visualized by plotting the residuals of regression equation over time.
+Figure 14 shows the result of the Durbin Watson test. The p-value < 2.2e-16 suggests that the alternative hypothesis is correct. There is strong evidence that the data is autocorrelated.
+
+
+```{r}
+
+library(lmtest)
+
+(autocorrelation = dwtest(Price ~ eth_hashrate + eth_address , alternative = "two.sided", data = eth_data))
+plot(eth_data$Date,resd, main=" Autocorrelation Plot", ylab = " Residuals", xlab = "Predicted Price") + grid()
+
+
+```
+
+
